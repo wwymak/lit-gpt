@@ -68,6 +68,8 @@ def merge_lora(
         model.load_state_dict(checkpoint)
 
     merge_lora_weights(model)
+    
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     save_path = out_dir / "lit_model.pth"
     fabric.print(f"Saving weights to {str(save_path)!r}")
