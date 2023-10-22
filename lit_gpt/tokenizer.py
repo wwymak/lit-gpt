@@ -62,7 +62,7 @@ class Tokenizer:
             raise ValueError(f"token {token!r} not found in the collection.")
         return id_
 
-    def check_if_bos_token_used(self, checkpoint_dir) -> bool:
+    def check_if_bos_token_used(self, checkpoint_dir: Path) -> bool:
         if not (tokenizer_config_path := checkpoint_dir / "tokenizer_config.json").is_file():
             return False
         with open(tokenizer_config_path) as fp:
@@ -87,7 +87,7 @@ class Tokenizer:
             tokens = self.processor.encode(string)
         else:
             raise RuntimeError
-        if bos or self.use_bos:
+        if bos or (bos is None and self.use_bos):
             bos_id = self.bos_id
             if bos_id is None:
                 raise NotImplementedError("This tokenizer does not have a defined a bos token")

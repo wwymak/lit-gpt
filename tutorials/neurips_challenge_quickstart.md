@@ -43,7 +43,7 @@ These don't include models that have been finetuned or otherwise aligned, as per
 
 **Permitted datasets**
 
-Any open-source dataset is allowed. However, [per competition rules](https://llm-efficiency-challenge.github.io/challenge), datasets that utilize "generated content" from other LLMs are not permitted.
+Any open-source dataset is allowed. Originally, [per competition rules](https://llm-efficiency-challenge.github.io/challenge), datasets that utilize "generated content" from other LLMs were not permitted. However, the rules were recently softened to also allow LLM-generated datasets if those datasets are made available and if it is not against the usage restrictions and guidelines of the LLM. If you plan to use a specific dataset that is not explicitely listed on the [challenge website](https://llm-efficiency-challenge.github.io/challenge) or want to use LLM-generated data, it is recommended to reach out to the organizers and confirm that this is in line with the competition rules.
 
 Examples of permitted datasets are the following:
 
@@ -71,28 +71,11 @@ Helpful competition rules relevant to the dataset choice:
 
 Use the following steps to set up the Lit-GPT repository on your machine.
 
-
-1. Install PyTorch 2.1 (until 2.1 is officially released, you need to install the release candidate):
-
-```bash
-pip install --index-url https://download.pytorch.org/whl/test/cu118 --pre 'torch==2.1.0'
-```
-
-2. Clone the repository:
-
-```bash
-git clone https://github.com/Lightning-AI/lit-gpt.git
-```
-
-
-3. Install the dependencies plus some optional ones:
-
-```bash
+```shell
+git clone https://github.com/Lightning-AI/lit-gpt
 cd lit-gpt
-pip install -r requirements.txt tokenizers sentencepiece
+pip install -r requirements.txt tokenizers sentencepiece huggingface_hub
 ```
-
-
 
 &nbsp;
 
@@ -101,8 +84,6 @@ pip install -r requirements.txt tokenizers sentencepiece
 This section explains how to download the StableLM 3B Base model, one of the smallest models supported in Lit-GPT (an even smaller, supported model is Pythia, which starts at 70M parameters). The downloaded and converted checkpoints will occupy approximately 28 Gb of disk space.
 
 ```bash
-pip install huggingface_hub
-
 python scripts/download.py \
   --repo_id stabilityai/stablelm-base-alpha-3b
 
@@ -173,11 +154,7 @@ HELM is currently also being integrated into Lit-GPT to evaluate LLMs before sub
 However, a tool with a more convenient interface is Eleuther AI's [Evaluation Harness](https://github.com/EleutherAI/lm-evaluation-harness), which contains some tasks, for example, BigBench, TruthfulQA, and GSM8k, that overlap with HELM. We can set up the Evaluation Harness as follows:
 
 ```bash
-cd ..
-git clone https://github.com/EleutherAI/lm-evaluation-harness
-cd lm-evaluation-harness
-pip install -e .
-cd ../lit-gpt
+pip install git+https://github.com/EleutherAI/lm-evaluation-harness.git@master
 ```
 
 And then we can use it via the following command:
