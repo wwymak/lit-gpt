@@ -28,7 +28,7 @@ from lit_gpt.utils import (
     load_checkpoint,
     num_parameters,
 )
-from scripts.prepare_alpaca import generate_prompt
+from lit_gpt.scripts.prepare_alpaca import generate_prompt
 
 eval_interval = 100
 save_interval = 100
@@ -67,6 +67,7 @@ def setup(
     quantize: Optional[Literal["bnb.nf4", "bnb.nf4-dq", "bnb.fp4", "bnb.fp4-dq", "bnb.int8-training"]] = None,
 ) -> None:
     precision = precision or get_default_supported_precision(training=True)
+    print('detecting cuda out of fabric:', torch.cuda.is_available()) 
 
     plugins = None
     if quantize is not None and quantize.startswith("bnb."):

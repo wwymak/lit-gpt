@@ -5,5 +5,5 @@ sentencepiece  # pythia, falcon, redpajama
 tokenizers     # llama-based models
 datasets       # quantize/gptq.py
 zstandard      # scripts/prepare_redpajama.py
-git+https://github.com/EleutherAI/lm-evaluation-harness.git@master  # eval
+# git+https://github.com/EleutherAI/lm-evaluation-harness.git@master  # eval
 pandas         # prepare_csv.py
