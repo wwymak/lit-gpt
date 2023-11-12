@@ -39,11 +39,11 @@ devices = 1
 
 # Hyperparameters
 learning_rate = 3e-4
-batch_size = 128
+batch_size = 64 # 128
 micro_batch_size = 1
 gradient_accumulation_iters = batch_size // micro_batch_size
 assert gradient_accumulation_iters > 0
-max_iters = 15000# 00  # train dataset size
+max_iters = 5000# 00  # train dataset size
 weight_decay = 0.01
 lora_r = 8
 lora_alpha = 16
@@ -108,6 +108,7 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path) 
         os.makedirs(out_dir, exist_ok=True)
 
     train_data = torch.load(data_dir / "train.pt")
+    train_data = [x for x in train_data if x['category'] == 'open_qa']
     val_data = torch.load(data_dir / "test.pt")
 
     if not any((lora_query, lora_key, lora_value, lora_projection, lora_mlp, lora_head)):
@@ -138,7 +139,7 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path) 
     trainable_params = [p for p in model.parameters() if p.requires_grad]
     if isinstance(fabric.strategy.precision, BitsandbytesPrecision):
         import bitsandbytes as bnb
-
+        fabric.print("using bitsandbytes")
         optimizer = bnb.optim.PagedAdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay)
     else:
         optimizer = torch.optim.AdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay)
@@ -151,7 +152,6 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path) 
     fabric.seed_everything(1337 + fabric.global_rank)
     print('start train')
     print('checking cuda: ', torch.cuda.is_available())
-    print('check fabrid',fabric.device.type )
     train_time = time.perf_counter()
     train(fabric, model, optimizer, scheduler, train_data, val_data, checkpoint_dir, out_dir)
     fabric.print(f"Training time: {(time.perf_counter()-train_time):.2f}s")

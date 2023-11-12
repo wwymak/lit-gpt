@@ -8,6 +8,7 @@ MERGED_MODELOUTPUT_DIR="${BASE_DIR}/out/lora_merged/mistralai-7b/"
 
 QUANTISATION="bnb.nf4-dq"
 PRECISION="bf16-true"
+PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
 
 python /home/jupyter/lit-gpt/finetune/lora.py \
   --data_dir $DATA_DIR \

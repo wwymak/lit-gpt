@@ -26,3 +26,5 @@ Some baseline metrics for llama7b model
   }
 }
 ```
+
+There is also a weird CUDA OOM error if I use batch_size = 128 and all the train data in the dolly dataset. So far, if I restrict to only the 'open_qa' samples and batch_size = 64 it's fine
