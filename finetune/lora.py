@@ -12,10 +12,10 @@ from lightning.fabric.strategies import FSDPStrategy
 from lightning.fabric.utilities import ThroughputMonitor, measure_flops
 
 # support running without installing as a package
-wd = Path(__file__).parent.parent.resolve()
-sys.path.append(str(wd))
-sys.path.append('/home/jupyter/lit-gpt')
-os.chdir('/home/jupyter/lit-gpt')
+# wd = Path(__file__).parent.parent.resolve()
+# sys.path.append(str(wd))
+# sys.path.append('/home/jupyter/lit-gpt')
+# os.chdir('/home/jupyter/lit-gpt')
 
 from generate.base import generate
 from lit_gpt.lora import GPT, Block, Config, lora_filter, mark_only_lora_as_trainable
@@ -43,7 +43,7 @@ batch_size = 128
 micro_batch_size = 1
 gradient_accumulation_iters = batch_size // micro_batch_size
 assert gradient_accumulation_iters > 0
-max_iters = 500# 00  # train dataset size
+max_iters = 15000# 00  # train dataset size
 weight_decay = 0.01
 lora_r = 8
 lora_alpha = 16
