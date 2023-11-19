@@ -30,39 +30,49 @@ from lit_gpt.utils import (
 )
 from lit_gpt.scripts.prepare_alpaca import generate_prompt
 
-eval_interval = 100
-save_interval = 100
-eval_iters = 100
+import wandb
+run = wandb.init(
+    project="mistral7b-lora-finetuning",
+    notes="instruction fine tuning on dolly 15k max seq length 1024",
+    tags=["dolly-15k", "L4 GPU", "max-seq-length-1024" ],
+)
+
+eval_interval = 1000
+save_interval = 1000
+eval_iters = 1
 eval_max_new_tokens = 100
-log_interval = 1
+log_interval = 10
 devices = 1
 
 # Hyperparameters
-learning_rate = 3e-4
-batch_size = 64 # 128
+learning_rate = 1e-4
+batch_size = 16 # 128
 micro_batch_size = 1
 gradient_accumulation_iters = batch_size // micro_batch_size
 assert gradient_accumulation_iters > 0
-max_iters = 5000# 00  # train dataset size
+
 weight_decay = 0.01
 lora_r = 8
 lora_alpha = 16
 lora_dropout = 0.05
 lora_query = True
-lora_key = False
+lora_key = True
 lora_value = True
 lora_projection = False
 lora_mlp = False
 lora_head = False
 warmup_steps = 100
 
+max_iters = 13510 #5000# 00  # train dataset size
+
 hparams = {k: v for k, v in locals().items() if isinstance(v, (int, float, str)) and not k.startswith("_")}
 
-
+wandb.config = hparams
 def setup(
     data_dir: Path = Path("data/alpaca"),
     checkpoint_dir: Path = Path("checkpoints/stabilityai/stablelm-base-alpha-3b"),
     out_dir: Path = Path("out/lora/alpaca"),
+    lora_model_name: str = "lit_model_lora_finetuned.pth",
     precision: Optional[str] = None,
     quantize: Optional[Literal["bnb.nf4", "bnb.nf4-dq", "bnb.fp4", "bnb.fp4-dq", "bnb.int8-training"]] = None,
 ) -> None:
@@ -96,10 +106,11 @@ def setup(
     logger = CSVLogger(out_dir.parent, out_dir.name, flush_logs_every_n_steps=log_interval)
     fabric = L.Fabric(devices=devices, strategy=strategy, precision=precision, loggers=logger, plugins=plugins)
     fabric.print(hparams)
-    fabric.launch(main, data_dir, checkpoint_dir, out_dir)
+    
+    fabric.launch(main, data_dir, checkpoint_dir, out_dir, lora_model_name)
 
 
-def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path) -> None:
+def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path, lora_model_name: str) -> None:
     check_valid_checkpoint_dir(checkpoint_dir)
 
     fabric.seed_everything(1337)  # same seed for every process to init model (FSDP)
@@ -108,11 +119,14 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path) 
         os.makedirs(out_dir, exist_ok=True)
 
     train_data = torch.load(data_dir / "train.pt")
-    train_data = [x for x in train_data if x['category'] == 'open_qa']
+    # train_data = [x for x in train_data if x['category'] in ['summarization']]
+    train_data = sorted(train_data, key=lambda entry: len(entry['input_ids']), reverse=True)
+    fabric.print(f"longest entrypoint: {train_data[0]['input_ids'].shape}")
     val_data = torch.load(data_dir / "test.pt")
-
+    fabric.print('data loaded')
     if not any((lora_query, lora_key, lora_value, lora_projection, lora_mlp, lora_head)):
         fabric.print("Warning: all LoRA layers are disabled!")
+    fabric.print('config start')
     config = Config.from_name(
         name=checkpoint_dir.name,
         r=lora_r,
@@ -125,6 +139,7 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path) 
         to_mlp=lora_mlp,
         to_head=lora_head,
     )
+    fabric.print('config defined')
     checkpoint_path = checkpoint_dir / "lit_model.pth"
     fabric.print(f"Loading model {str(checkpoint_path)!r} with {config.__dict__}")
     with fabric.init_module(empty_init=(devices > 1)):
@@ -153,14 +168,16 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path) 
     print('start train')
     print('checking cuda: ', torch.cuda.is_available())
     train_time = time.perf_counter()
+    # torch.cuda.memory._record_memory_history()
     train(fabric, model, optimizer, scheduler, train_data, val_data, checkpoint_dir, out_dir)
     fabric.print(f"Training time: {(time.perf_counter()-train_time):.2f}s")
     if fabric.device.type == "cuda":
         fabric.print(f"Memory used: {torch.cuda.max_memory_allocated() / 1e9:.02f} GB")
 
     # Save the final LoRA checkpoint at the end of training
-    save_path = out_dir / "lit_model_lora_finetuned.pth"
+    save_path = out_dir / lora_model_name
     save_lora_checkpoint(fabric, model, save_path)
+    # torch.cuda.memory._dump_snapshot("cuda_memory_snapshot.pickle")
 
 
 def train(
@@ -229,6 +246,7 @@ def train(
                 f"iter {iter_num} step {step_count}: loss {loss_item:.4f}, iter time:"
                 f" {(t1 - iter_t0) * 1000:.2f}ms{' (optimizer.step)' if not is_accumulating else ''}"
             )
+            wandb.log({"iter": iter_num, "step": step_count, "loss": loss_item})
 
         if not is_accumulating and step_count % eval_interval == 0:
             t0 = time.perf_counter()
